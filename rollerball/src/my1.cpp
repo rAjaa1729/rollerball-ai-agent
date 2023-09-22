@@ -6,28 +6,24 @@
 using namespace std;;
 
 #include "board.hpp"
+// #include "board.cpp"
 #include "engine.hpp"
 
 
-int MaxVal(Board*b,int alpha,int beta,int depth,int deeplevel);
-int MinVal(Board*b,int alpha,int beta,int depth,int deeplevel);
+int MaxVal(Board*b,int alpha,int beta,int depth);
+int MinVal(Board*b,int alpha,int beta,int depth);
 
 #define kingval 1000
 
-
-#define rookval 200
-#define bishopval 100
+#define rookval 100
+#define bishopval 70
 #define pawnval 50
-#define checkval 250
-#define checkmate 10000
-#define depthlevel 4
+#define checkval 20
+#define depthlevel 3
 #define promote 3
 #define dist 10
 
-int nodes=0;
-
 PlayerColor playertoplay;
-
 
 int manhatten(U8 pos,int a,int b){
     int x=getx(pos),y=gety(pos);
@@ -118,33 +114,17 @@ int evaluate(Board* b){
 }
 
 
-int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel){
+int MinVal(Board* b,int alpha,int beta,int depth){
 
-    if(depth==deeplevel){
+    if(depth==depthlevel){
         return evaluate(b);
     }
     auto moveset=b->get_legal_moves();
     int val=INT_MAX;
-    nodes+=moveset.size();
     for(auto move: moveset){
-        // U8 p1=getp1(move);
-        // if(playertoplay==WHITE){
-        //     U8 pb=b->data.w_king;
-        //     if(p1==pb){
-        //         cout<<"using checkmate for min"<<endl;
-        //         return -checkmate;
-        //     }
-        // }
-        // if(playertoplay==BLACK){
-        //     U8 pw=b->data.b_king;
-        //     if(p1==pw){
-        //         cout<<"using checkmate for min"<<endl;
-        //         return -checkmate;
-        //     }
-        // }
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=min(val,MaxVal(copyb,alpha,beta,depth+1,deeplevel));
+        val=min(val,MaxVal(copyb,alpha,beta,depth+1));
         beta=min(beta,val);
         delete copyb;
         if(alpha>=beta)return val;
@@ -152,32 +132,16 @@ int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel){
     return val;
 }
 
-int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel){
-    if(depth==deeplevel){
+int MaxVal(Board* b,int alpha,int beta,int depth){
+    if(depth==depthlevel){
         return evaluate(b);
     }
     auto moveset=b->get_legal_moves();
     int val=INT_MIN;
-    nodes+=moveset.size();
     for(auto move : moveset){
-        // U8 p1=getp1(move);
-        // if(playertoplay==WHITE){
-        //     U8 pb=b->data.b_king;
-        //     if(p1==pb){
-        //         cout<<"using checkmate for max"<<endl;
-        //         return checkmate;
-        //     }
-        // }
-        // if(playertoplay==BLACK){
-        //     U8 pw=b->data.w_king;
-        //     if(p1==pw){
-        //         cout<<"using checkmate for max"<<endl;
-        //         return checkmate;
-        //     }
-        // }
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=max(val,MinVal(copyb,alpha,beta,depth+1,deeplevel));
+        val=max(val,MinVal(copyb,alpha,beta,depth+1));
         alpha=max(alpha,val);
         delete copyb;
         if(alpha>=beta) return val;
@@ -185,26 +149,22 @@ int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel){
     return val;
 }
 
-U16 BestMove(Board* b,unordered_set<U16>& moveset){
+U16 BestMove(Board* b){
+    auto moveset =b->get_legal_moves();
     U16 best_move=*moveset.begin();
     int mx=INT_MIN;
     playertoplay=b->data.player_to_play;
-    // for(int i=1;i<=depthlevel;i++){
-        nodes+=moveset.size();
-        for(auto move : moveset){
-            Board* c = b->copy();
-            c->do_move(move);
-            int val=MinVal(c,INT_MIN,INT_MAX,1,depthlevel);
-            if(val>mx){
-                best_move=move;
-                mx=val;
-            }
-            delete c;
+    for(auto move : moveset){
+        Board* c = b->copy();
+        c->do_move(move);
+        int val=MinVal(c,INT_MIN,INT_MAX,1);
+        if(val>mx){
+            best_move=move;
+            mx=val;
         }
-    // }
-    
+        delete c;
+    }
     b->do_move(best_move);
-    cout<<"best move "<<move_to_str(best_move)<<endl;
     return best_move;
 }
 
@@ -216,10 +176,8 @@ void Engine::find_best_move(const Board& b) {
     }
     else {
         Board* c=b.copy();
-        nodes=0;
-        U16 best_move=BestMove(c,moveset);
+        U16 best_move=BestMove(c);
         delete c;
-        cout<<"final no of nodes processed "<<nodes<<endl;
         this->best_move=best_move;
     }
 }
