@@ -10,8 +10,8 @@ using namespace std;;
 #include "engine.hpp"
 
 
-int MaxVal(Board*b,int alpha,int beta,int depth);
-int MinVal(Board*b,int alpha,int beta,int depth);
+int MaxVal(Board*b,int alpha,int beta,int depth,int deeplevel);
+int MinVal(Board*b,int alpha,int beta,int depth,int deeplevel);
 
 #define kingval 1000
 #define rookval 100
