@@ -21,7 +21,7 @@ int MinVal(Board*b,int alpha,int beta,int depth,int deeplevel,Engine*e);
 #define pawnval 60
 #define checkval 100
 #define checkmate 100000
-#define depthlevel 6
+#define depthlevel 4
 #define promote 3
 #define dist 20
 
@@ -173,7 +173,7 @@ int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel,Engine*e){
         nodes++;
 
     if(depth==deeplevel){
-
+        // cout<<"\n\n\n\n\n"<<depth<<"\n\n\n\n\n\n";
         return utility_val(b);
     }
     auto moveset=b->get_legal_moves();
@@ -226,7 +226,7 @@ void Engine::find_best_move(const Board& b) {
         nodes=0;
         U16 best_move=BestMove(c,moveset,this);
         delete c;
-        cout<<"final no of nodes processed "<<nodes<<endl;
+        // cout<<"final no of nodes processed "<<nodes<<endl;
         this->best_move=best_move;
     }
 }

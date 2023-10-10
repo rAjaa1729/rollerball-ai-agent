@@ -21,9 +21,10 @@ int MinVal(Board*b,int alpha,int beta,int depth,int deeplevel,Engine*e);
 #define pawnval 60
 #define checkval 100
 #define checkmate 100000
-#define depthlevel 6
+#define depthlevel 4
 #define promote 3
 #define dist 20
+#define deny 400
 
 
 int nodes=0;
@@ -107,12 +108,18 @@ int evalpawn(Board* b){
 }
 
 
-int check(Board* b){
+int check(Board* b,unordered_set<U16>& moveset){
     int val=0;
     if(b->data.player_to_play==playertoplay){
-        if(b->in_check())val-=checkval;
+        bool t=b->in_check();
+        if(t && moveset.empty())val-=Global;
+        else if(t)val-=checkval;
+        else if(moveset.empty())val+=deny;
     }else{
-        if(b->in_check())val+=checkval;
+        bool t=b->in_check();
+        if(t && moveset.empty())val+=Global;
+        else if(t)val+=checkval;
+        else if(moveset.empty())val+=deny;
     }
     return val;
 }
@@ -133,35 +140,32 @@ int evaluate(Board* b){
     if(b->data.b_rook_bs!=DEAD)val2+=rookval;
     if(b->data.b_rook_ws!=DEAD)val2+=rookval;
     
-    
     if(playertoplay==WHITE)return val1-val2;
     return val2-val1;
 }
 
-int utility_val(Board* b){
-    int val=evaluate(b)+evalpawn(b)+check(b);
+int utility_val(Board* b,unordered_set<U16>& moveset){
+    int val=evaluate(b)+evalpawn(b)+check(b,moveset);
     return val;
 }
 
 
 
 
-int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel,Engine*e){
+int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel){
     nodes++;
     if(depth==deeplevel){
-
         return utility_val(b);
     }
 
     auto moveset=b->get_legal_moves();
-
-    if(moveset.size()==0) return utility_val(b);
+    if(moveset.empty() && t ) return utility_val(b);
 
     int val=INT_MAX;
     for(auto move: moveset){
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=min(val,MaxVal(copyb,alpha,beta,depth+1,deeplevel,e));
+        val=min(val,MaxVal(copyb,alpha,beta,depth+1,deeplevel));
         beta=min(beta,val);
         delete copyb;
         if(alpha>=beta)return val;
@@ -169,22 +173,21 @@ int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel,Engine*e){
     return val;
 }
 
-int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel,Engine*e){
+int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel){
         nodes++;
 
     if(depth==deeplevel){
-
         return utility_val(b);
     }
     auto moveset=b->get_legal_moves();
 
-    if(moveset.size()==0) return utility_val(b);
+    if(moveset.empty()) return utility_val(b);
         
     int val=INT_MIN;
     for(auto move : moveset){
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=max(val,MinVal(copyb,alpha,beta,depth+1,deeplevel,e));
+        val=max(val,MinVal(copyb,alpha,beta,depth+1,deeplevel));
         alpha=max(alpha,val);
         delete copyb;
         if(alpha>=beta) return val;
@@ -192,17 +195,16 @@ int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel,Engine*e){
     return val;
 }
 
-U16 BestMove(Board* b,unordered_set<U16>& moveset,Engine* e){
+U16 BestMove(Board* b,unordered_set<U16>& moveset){
     U16 best_move=*moveset.begin();
     int mx=INT_MIN;
     playertoplay=b->data.player_to_play;
     nodes=1;
-
     int alpha=INT_MIN;
     for(auto move : moveset){
         Board* c = b->copy();
         c->do_move(move);
-        int val=MinVal(c,alpha,INT_MAX,1,depthlevel,e);
+        int val=MinVal(c,alpha,INT_MAX,1,depthlevel);
         alpha=max(alpha,val);
         if(val>mx){
             best_move=move;
@@ -221,10 +223,9 @@ void Engine::find_best_move(const Board& b) {
         return;
     }
     else {
-
         Board* c=b.copy();
         nodes=0;
-        U16 best_move=BestMove(c,moveset,this);
+        U16 best_move=BestMove(c,moveset);
         delete c;
         cout<<"final no of nodes processed "<<nodes<<endl;
         this->best_move=best_move;

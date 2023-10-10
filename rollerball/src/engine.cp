@@ -3,27 +3,32 @@
 #include <random>
 #include <iostream>
 #include <set>
+#include <chrono>
 using namespace std;;
 
 #include "board.hpp"
-// #include "board.cpp"
 #include "engine.hpp"
 
 
-int MaxVal(Board*b,int alpha,int beta,int depth);
-int MinVal(Board*b,int alpha,int beta,int depth);
+int MaxVal(Board*b,int alpha,int beta,int depth,int deeplevel);
+int MinVal(Board*b,int alpha,int beta,int depth,int deeplevel);
 
 #define kingval 1000
 
-#define rookval 100
-#define bishopval 70
+
+#define rookval 200
+#define bishopval 100
 #define pawnval 50
-#define checkval 20
+#define checkval 250
+#define checkmate 10000
 #define depthlevel 3
 #define promote 3
 #define dist 10
 
+int nodes=0;
+
 PlayerColor playertoplay;
+
 
 int manhatten(U8 pos,int a,int b){
     int x=getx(pos),y=gety(pos);
@@ -114,17 +119,26 @@ int evaluate(Board* b){
 }
 
 
-int MinVal(Board* b,int alpha,int beta,int depth){
-
-    if(depth==depthlevel){
+int MinVal(Board* b,int alpha,int beta,int depth,int deeplevel){
+    nodes++;
+    if(depth==deeplevel){
         return evaluate(b);
     }
+    // auto currentTime = std::chrono::high_resolution_clock::now();
+
+    // // Convert the time point to microseconds since epoch
+    // auto currentTimeMicroseconds = std::chrono::time_point_cast<std::chrono::microseconds>(currentTime);
     auto moveset=b->get_legal_moves();
+    //     auto currentTime2 = std::chrono::high_resolution_clock::now();
+
+    // // Convert the time point to microseconds since epoch
+    // auto currentTimeMicroseconds2 = std::chrono::time_point_cast<std::chrono::microseconds>(currentTime2);
+    // cout<<"time "<<(currentTimeMicroseconds2.time_since_epoch().count()-currentTimeMicroseconds.time_since_epoch().count())<<endl;
     int val=INT_MAX;
     for(auto move: moveset){
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=min(val,MaxVal(copyb,alpha,beta,depth+1));
+        val=min(val,MaxVal(copyb,alpha,beta,depth+1,deeplevel));
         beta=min(beta,val);
         delete copyb;
         if(alpha>=beta)return val;
@@ -132,8 +146,10 @@ int MinVal(Board* b,int alpha,int beta,int depth){
     return val;
 }
 
-int MaxVal(Board* b,int alpha,int beta,int depth){
-    if(depth==depthlevel){
+int MaxVal(Board* b,int alpha,int beta,int depth,int deeplevel){
+        nodes++;
+
+    if(depth==deeplevel){
         return evaluate(b);
     }
     auto moveset=b->get_legal_moves();
@@ -141,7 +157,7 @@ int MaxVal(Board* b,int alpha,int beta,int depth){
     for(auto move : moveset){
         auto copyb=b->copy();
         copyb->do_move(move);
-        val=max(val,MinVal(copyb,alpha,beta,depth+1));
+        val=max(val,MinVal(copyb,alpha,beta,depth+1,deeplevel));
         alpha=max(alpha,val);
         delete copyb;
         if(alpha>=beta) return val;
@@ -149,22 +165,28 @@ int MaxVal(Board* b,int alpha,int beta,int depth){
     return val;
 }
 
-U16 BestMove(Board* b){
-    auto moveset =b->get_legal_moves();
+U16 BestMove(Board* b,unordered_set<U16>& moveset){
     U16 best_move=*moveset.begin();
     int mx=INT_MIN;
     playertoplay=b->data.player_to_play;
+    int alpha=INT_MIN;
+    // for(int i=1;i<=depthlevel;i++){
+    nodes++;
     for(auto move : moveset){
         Board* c = b->copy();
         c->do_move(move);
-        int val=MinVal(c,INT_MIN,INT_MAX,1);
+        int val=MinVal(c,alpha,INT_MAX,1,depthlevel);
+        alpha=max(alpha,val);
         if(val>mx){
             best_move=move;
             mx=val;
         }
         delete c;
     }
+    // }
+    
     b->do_move(best_move);
+    // cout<<"best move "<<move_to_str(best_move)<<endl;
     return best_move;
 }
 
@@ -175,9 +197,15 @@ void Engine::find_best_move(const Board& b) {
         return;
     }
     else {
+        cout <<all_boards_to_str(b)<<endl;
+        for(auto m:moveset)
+            cout <<move_to_str(m)<<" ";
+        cout<<endl;
         Board* c=b.copy();
-        U16 best_move=BestMove(c);
+        nodes=0;
+        U16 best_move=BestMove(c,moveset);
         delete c;
+        cout<<"final no of nodes processed "<<nodes<<endl;
         this->best_move=best_move;
     }
 }
